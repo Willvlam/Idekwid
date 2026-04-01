@@ -16,7 +16,7 @@ let timeLeft = 60;
 
 const gravity = 0.5;
 const friction = 0.8;
-const jumpStrength = -20;
+const jumpStrength = -50;
 const speed = 3;
 
 let platforms = [];
