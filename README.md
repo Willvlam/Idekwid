@@ -1,5 +1,5 @@
 # Idekwid
-[admin](index.html) trial first task complete :)
+admin trial first task complete :)
 
 ## Impossible 2D Game
 
