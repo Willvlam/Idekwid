@@ -14,9 +14,9 @@ let gameOver = false;
 let paused = false;
 let timeLeft = 60;
 
-const gravity = 0.6;
+const gravity = 0.5;
 const friction = 0.8;
-const jumpStrength = -13;
+const jumpStrength = -14;
 const speed = 3;
 
 let platforms = [];
@@ -37,13 +37,13 @@ function initLevel() {
     timeLeft = 60 + level * 5; // more time for higher levels
 
     if (level === 1) {
-        // Basic platforms - narrower
+        // Basic platforms - closer for playability
         platforms.push({ x: 0, y: 550, width: 150, height: 50 });
-        platforms.push({ x: 200, y: 450, width: 60, height: 20 });
-        platforms.push({ x: 300, y: 350, width: 80, height: 20 });
-        platforms.push({ x: 450, y: 250, width: 100, height: 20 });
-        platforms.push({ x: 600, y: 150, width: 150, height: 20 });
-        collectibles.push({ x: 720, y: 120, width: 20, height: 20 });
+        platforms.push({ x: 200, y: 480, width: 60, height: 20 });
+        platforms.push({ x: 300, y: 410, width: 80, height: 20 });
+        platforms.push({ x: 450, y: 340, width: 100, height: 20 });
+        platforms.push({ x: 600, y: 270, width: 150, height: 20 });
+        collectibles.push({ x: 720, y: 240, width: 20, height: 20 });
     } else if (level === 2) {
         // With enemies - faster and more
         platforms.push({ x: 0, y: 550, width: 120, height: 50 });
