@@ -14,10 +14,10 @@ let gameOver = false;
 let paused = false;
 let timeLeft = 60;
 
-const gravity = 0.8;
-const friction = 0.7;
-const jumpStrength = -10;
-const speed = 2.5;
+const gravity = 0.6;
+const friction = 0.8;
+const jumpStrength = -13;
+const speed = 3;
 
 let platforms = [];
 let enemies = [];
