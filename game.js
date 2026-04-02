@@ -4,6 +4,7 @@ const scoreEl = document.getElementById('score');
 const livesEl = document.getElementById('lives');
 const levelEl = document.getElementById('level');
 const timeEl = document.getElementById('time');
+const objectiveEl = document.getElementById('objective');
 
 let player = { x: 50, y: 500, width: 20, height: 20, vx: 0, vy: 0, onGround: false };
 let keys = {};
@@ -23,12 +24,14 @@ let platforms = [];
 let enemies = [];
 let collectibles = [];
 let traps = [];
+let goal = null;
 
 function initLevel() {
     platforms = [];
     enemies = [];
     collectibles = [];
     traps = [];
+    goal = null;
     player.x = 50;
     player.y = 500;
     player.vx = 0;
@@ -125,6 +128,16 @@ function initLevel() {
         }
         collectibles.push({ x: Math.random() * (canvas.width - 20), y: 20, width: 20, height: 20 });
     }
+
+    // new goal: reach this flag after collecting all collectibles
+    if (level === 1) goal = { x: 740, y: 210, width: 20, height: 30 };
+    else if (level === 2) goal = { x: 740, y: 30, width: 20, height: 30 };
+    else if (level === 3) goal = { x: 640, y: 30, width: 20, height: 30 };
+    else if (level === 4) goal = { x: 620, y: 30, width: 20, height: 30 };
+    else if (level === 5) goal = { x: 340, y: 20, width: 20, height: 30 };
+    else if (level >= 6) goal = { x: Math.min(760, canvas.width - 30), y: 20, width: 20, height: 30 };
+
+    if (!goal) goal = { x: 740, y: 30, width: 20, height: 30 };
 }
 
 function update() {
@@ -211,10 +224,17 @@ function update() {
             player.y < c.y + c.height && player.y + player.height > c.y) {
             collectibles.splice(i, 1);
             score += 100;
-            if (collectibles.length === 0) {
-                level++;
-                initLevel();
-            }
+        }
+    }
+
+    // Goal check: requires all collectibles to be gathered first
+    if (goal && player.x < goal.x + goal.width && player.x + player.width > goal.x &&
+        player.y < goal.y + goal.height && player.y + player.height > goal.y) {
+        if (collectibles.length === 0) {
+            score += 500; // bonus for reaching goal
+            level++;
+            initLevel();
+            return;
         }
     }
 
@@ -232,6 +252,11 @@ function update() {
     livesEl.textContent = `Lives: ${lives}`;
     levelEl.textContent = `Level: ${level}`;
     timeEl.textContent = `Time: ${Math.ceil(timeLeft)}`;
+    if (collectibles.length === 0) {
+        objectiveEl.textContent = 'Objective: All collected! Reach the purple goal.';
+    } else {
+        objectiveEl.textContent = `Objective: Collect remaining ${collectibles.length} and then reach the purple goal.`;
+    }
 }
 
 function draw() {
@@ -259,6 +284,16 @@ function draw() {
     ctx.fillStyle = 'yellow';
     for (let c of collectibles) {
         ctx.fillRect(c.x, c.y, c.width, c.height);
+    }
+
+    // Draw goal (finish flag) - must reach after collecting all items
+    if (goal) {
+        ctx.fillStyle = 'purple';
+        ctx.fillRect(goal.x, goal.y, goal.width, goal.height);
+        ctx.fillStyle = 'white';
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('GOAL', goal.x + goal.width / 2, goal.y - 5);
     }
 
     // Draw player
