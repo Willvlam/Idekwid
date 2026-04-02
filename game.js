@@ -3,141 +3,365 @@ const ctx = canvas.getContext('2d');
 const scoreEl = document.getElementById('score');
 const livesEl = document.getElementById('lives');
 const levelEl = document.getElementById('level');
-const timeEl = document.getElementById('time');
-const objectiveEl = document.getElementById('objective');
+const waveEl = document.getElementById('wave');
+const healthEl = document.getElementById('health');
 
-let player = { x: 50, y: 500, width: 20, height: 20, vx: 0, vy: 0, onGround: false };
-let keys = {};
+// Game state
+let gameState = 'playing'; // 'playing', 'gameOver', 'paused'
 let score = 0;
 let lives = 3;
-let level = 1;
-let gameOver = false;
-let paused = false;
-let timeLeft = 60;
+let wave = 1;
+let waveProgress = 0;
+let gameTime = 0;
+let playerHealth = 100;
 
-const gravity = 0.5;
-const friction = 0.8;
-const jumpStrength = -10;
-const speed = 3;
+// Player
+let player = {
+    x: canvas.width / 2,
+    y: canvas.height - 50,
+    radius: 8,
+    vx: 0,
+    vy: 0,
+    shields: 0,
+    maxSpeed: 6
+};
 
-let platforms = [];
+// Game objects
+let bullets = [];
 let enemies = [];
-let collectibles = [];
-let traps = [];
-let goal = null;
+let explosions = [];
+let powerUps = [];
+let particles = [];
 
-function initLevel() {
-    platforms = [];
-    enemies = [];
-    collectibles = [];
-    traps = [];
-    goal = null;
-    player.x = 50;
-    player.y = 500;
-    player.vx = 0;
-    player.vy = 0;
-    player.onGround = false;
-    timeLeft = 60 + level * 5; // more time for higher levels
+// Controls
+let keys = {};
 
-    if (level === 1) {
-        // Basic platforms - closer for playability
-        platforms.push({ x: 0, y: 550, width: 150, height: 50 });
-        platforms.push({ x: 200, y: 480, width: 60, height: 20 });
-        platforms.push({ x: 300, y: 410, width: 80, height: 20 });
-        platforms.push({ x: 450, y: 340, width: 100, height: 20 });
-        platforms.push({ x: 600, y: 270, width: 150, height: 20 });
-        collectibles.push({ x: 720, y: 240, width: 20, height: 20 });
-    } else if (level === 2) {
-        // With enemies - faster and more
-        platforms.push({ x: 0, y: 550, width: 120, height: 50 });
-        platforms.push({ x: 150, y: 450, width: 50, height: 20 });
-        platforms.push({ x: 250, y: 350, width: 50, height: 20 });
-        platforms.push({ x: 350, y: 250, width: 50, height: 20 });
-        platforms.push({ x: 450, y: 150, width: 50, height: 20 });
-        platforms.push({ x: 550, y: 50, width: 200, height: 20 });
-        enemies.push({ x: 200, y: 420, width: 20, height: 20, vx: 3, direction: 1 });
-        enemies.push({ x: 400, y: 220, width: 20, height: 20, vx: -2.5, direction: -1 });
-        enemies.push({ x: 600, y: 20, width: 20, height: 20, vx: 4, direction: 1 });
-        collectibles.push({ x: 720, y: 20, width: 20, height: 20 });
-    } else if (level === 3) {
-        // Puzzles and traps - invisible traps
-        platforms.push({ x: 0, y: 550, width: 80, height: 50 });
-        platforms.push({ x: 120, y: 450, width: 40, height: 20 });
-        platforms.push({ x: 200, y: 350, width: 40, height: 20 });
-        platforms.push({ x: 280, y: 250, width: 40, height: 20 });
-        platforms.push({ x: 360, y: 150, width: 40, height: 20 });
-        platforms.push({ x: 440, y: 50, width: 200, height: 20 });
-        traps.push({ x: 160, y: 520, width: 40, height: 30 });
-        traps.push({ x: 240, y: 320, width: 40, height: 30 });
-        traps.push({ x: 320, y: 220, width: 40, height: 30 });
-        traps.push({ x: 400, y: 120, width: 40, height: 30 });
-        collectibles.push({ x: 600, y: 20, width: 20, height: 20 });
-        // Moving platform
-        platforms.push({ x: 80, y: 400, width: 60, height: 20, vx: 1.5, direction: 1, minX: 80, maxX: 250 });
-    } else if (level === 4) {
-        // More enemies and moving
-        platforms.push({ x: 0, y: 550, width: 100, height: 50 });
-        platforms.push({ x: 130, y: 450, width: 50, height: 20 });
-        platforms.push({ x: 210, y: 350, width: 50, height: 20 });
-        platforms.push({ x: 290, y: 250, width: 50, height: 20 });
-        platforms.push({ x: 370, y: 150, width: 50, height: 20 });
-        platforms.push({ x: 450, y: 50, width: 150, height: 20 });
-        enemies.push({ x: 150, y: 420, width: 20, height: 20, vx: 4, direction: 1 });
-        enemies.push({ x: 230, y: 320, width: 20, height: 20, vx: -3, direction: -1 });
-        enemies.push({ x: 310, y: 220, width: 20, height: 20, vx: 3.5, direction: 1 });
-        enemies.push({ x: 390, y: 120, width: 20, height: 20, vx: -4, direction: -1 });
-        traps.push({ x: 180, y: 520, width: 30, height: 30 });
-        traps.push({ x: 260, y: 320, width: 30, height: 30 });
-        collectibles.push({ x: 550, y: 20, width: 20, height: 20 });
-        platforms.push({ x: 50, y: 300, width: 50, height: 20, vx: 2, direction: 1, minX: 50, maxX: 200 });
-    } else if (level === 5) {
-        // Vertical challenges
-        platforms.push({ x: 0, y: 550, width: 80, height: 50 });
-        platforms.push({ x: 100, y: 450, width: 30, height: 20 });
-        platforms.push({ x: 160, y: 350, width: 30, height: 20 });
-        platforms.push({ x: 220, y: 250, width: 30, height: 20 });
-        platforms.push({ x: 280, y: 150, width: 30, height: 20 });
-        platforms.push({ x: 340, y: 50, width: 150, height: 20 });
-        enemies.push({ x: 120, y: 420, width: 20, height: 20, vx: 5, direction: 1 });
-        enemies.push({ x: 180, y: 320, width: 20, height: 20, vx: -4, direction: -1 });
-        enemies.push({ x: 240, y: 220, width: 20, height: 20, vx: 4.5, direction: 1 });
-        enemies.push({ x: 300, y: 120, width: 20, height: 20, vx: -5, direction: -1 });
-        traps.push({ x: 130, y: 520, width: 20, height: 30 });
-        traps.push({ x: 190, y: 320, width: 20, height: 30 });
-        traps.push({ x: 250, y: 220, width: 20, height: 30 });
-        traps.push({ x: 310, y: 120, width: 20, height: 30 });
-        collectibles.push({ x: 450, y: 20, width: 20, height: 20 });
-        platforms.push({ x: 50, y: 200, width: 40, height: 20, vx: 3, direction: 1, minX: 50, maxX: 150 });
-    } else if (level >= 6) {
-        // Endless harder levels
-        let numPlatforms = 8 + level;
-        let y = 550;
-        for (let i = 0; i < numPlatforms; i++) {
-            let width = Math.max(20, 60 - level * 2);
-            platforms.push({ x: Math.random() * (canvas.width - width), y: y, width: width, height: 20 });
-            y -= 80 + Math.random() * 20;
-            if (y < 0) break;
-        }
-        let numEnemies = 2 + level;
-        for (let i = 0; i < numEnemies; i++) {
-            enemies.push({ x: Math.random() * (canvas.width - 20), y: 400 - i * 100, width: 20, height: 20, vx: 3 + level * 0.5, direction: Math.random() > 0.5 ? 1 : -1 });
-        }
-        let numTraps = level;
-        for (let i = 0; i < numTraps; i++) {
-            traps.push({ x: Math.random() * (canvas.width - 30), y: 500 - i * 50, width: 30, height: 30 });
-        }
-        collectibles.push({ x: Math.random() * (canvas.width - 20), y: 20, width: 20, height: 20 });
+// Enemy spawning
+let enemySpawnCounter = 0;
+let enemySpawnRate = 0;
+let waveTimer = 0;
+const waveLength = 15000; // 15 seconds per wave
+
+// Difficulty scaling
+function getDifficulty() {
+    return 1 + (wave - 1) * 0.3 + (gameTime / 60000) * 0.5;
+}
+
+class Bullet {
+    constructor(x, y, vx, vy, damage = 1) {
+        this.x = x;
+        this.y = y;
+        this.vx = vx;
+        this.vy = vy;
+        this.radius = 3;
+        this.damage = damage;
+        this.life = 300;
     }
 
-    // new goal: reach this flag after collecting all collectibles
-    if (level === 1) goal = { x: 740, y: 210, width: 20, height: 30 };
-    else if (level === 2) goal = { x: 740, y: 30, width: 20, height: 30 };
-    else if (level === 3) goal = { x: 640, y: 30, width: 20, height: 30 };
-    else if (level === 4) goal = { x: 620, y: 30, width: 20, height: 30 };
-    else if (level === 5) goal = { x: 340, y: 20, width: 20, height: 30 };
-    else if (level >= 6) goal = { x: Math.min(760, canvas.width - 30), y: 20, width: 20, height: 30 };
+    update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.life--;
+    }
 
-    if (!goal) goal = { x: 740, y: 30, width: 20, height: 30 };
+    draw() {
+        ctx.fillStyle = '#FF6B6B';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    isOutOfBounds() {
+        return this.x < -10 || this.x > canvas.width + 10 || this.y < -10 || this.y > canvas.height + 10 || this.life <= 0;
+    }
+}
+
+class BasicEnemy {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.vx = (Math.random() - 0.5) * 2;
+        this.vy = Math.random() * 1 + 0.5;
+        this.radius = 12;
+        this.health = 20;
+        this.maxHealth = 20;
+        this.shootCounter = 0;
+        this.shootRate = 60 - getDifficulty() * 10;
+        this.pattern = Math.floor(Math.random() * 2);
+    }
+
+    update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.shootCounter++;
+
+        // Wrap around edges
+        if (this.x < -20) this.x = canvas.width + 20;
+        if (this.x > canvas.width + 20) this.x = -20;
+        if (this.y > canvas.height + 20) {
+            return 'remove';
+        }
+
+        if (this.shootCounter >= this.shootRate) {
+            this.shoot();
+            this.shootCounter = 0;
+        }
+    }
+
+    shoot() {
+        if (this.pattern === 0) {
+            // Spread shot
+            for (let i = -1; i <= 1; i++) {
+                let angle = Math.atan2(player.y - this.y, player.x - this.x) + i * 0.4;
+                let speed = 3 + getDifficulty() * 0.5;
+                bullets.push(new Bullet(this.x, this.y, Math.cos(angle) * speed, Math.sin(angle) * speed));
+            }
+        } else {
+            // Aimed shot
+            let angle = Math.atan2(player.y - this.y, player.x - this.x);
+            let speed = 3.5 + getDifficulty() * 0.6;
+            bullets.push(new Bullet(this.x, this.y, Math.cos(angle) * speed, Math.sin(angle) * speed));
+        }
+    }
+
+    draw() {
+        ctx.fillStyle = '#FF8C42';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Health bar
+        ctx.fillStyle = '#00FF00';
+        ctx.fillRect(this.x - 15, this.y - 25, 30 * (this.health / this.maxHealth), 3);
+        ctx.strokeStyle = '#00AA00';
+        ctx.strokeRect(this.x - 15, this.y - 25, 30, 3);
+    }
+
+    takeDamage(damage) {
+        this.health -= damage;
+        if (this.health <= 0) {
+            createExplosion(this.x, this.y, 15);
+            return true;
+        }
+        return false;
+    }
+}
+
+class SpiralEnemy {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.vx = 0;
+        this.vy = 0.5;
+        this.radius = 14;
+        this.health = 30;
+        this.maxHealth = 30;
+        this.shootCounter = 0;
+        this.shootRate = 40 - getDifficulty() * 8;
+        this.angle = 0;
+    }
+
+    update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.shootCounter++;
+        this.angle += 0.1;
+
+        if (this.y > canvas.height + 20) {
+            return 'remove';
+        }
+
+        if (this.shootCounter >= this.shootRate) {
+            this.shoot();
+            this.shootCounter = 0;
+        }
+    }
+
+    shoot() {
+        // Spiral pattern - 8 bullets in a circle
+        for (let i = 0; i < 8; i++) {
+            let angle = (i / 8) * Math.PI * 2 + this.angle;
+            let speed = 2.5 + getDifficulty() * 0.3;
+            bullets.push(new Bullet(this.x, this.y, Math.cos(angle) * speed, Math.sin(angle) * speed));
+        }
+    }
+
+    draw() {
+        ctx.fillStyle = '#9D4EDD';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Health bar
+        ctx.fillStyle = '#00FF00';
+        ctx.fillRect(this.x - 18, this.y - 25, 36 * (this.health / this.maxHealth), 3);
+        ctx.strokeStyle = '#00AA00';
+        ctx.strokeRect(this.x - 18, this.y - 25, 36, 3);
+    }
+
+    takeDamage(damage) {
+        this.health -= damage;
+        if (this.health <= 0) {
+            createExplosion(this.x, this.y, 20);
+            return true;
+        }
+        return false;
+    }
+}
+
+class BossEnemy {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.vx = 0;
+        this.vy = 0;
+        this.radius = 20;
+        this.health = 150 * getDifficulty();
+        this.maxHealth = this.health;
+        this.shootCounter = 0;
+        this.shootRate = 20;
+        this.pattern = 0;
+        this.patternTimer = 0;
+    }
+
+    update() {
+        // Hover
+        this.y = Math.sin(gameTime / 1000) * 30 + 80;
+
+        this.shootCounter++;
+        this.patternTimer++;
+
+        if (this.patternTimer > 200) {
+            this.pattern = (this.pattern + 1) % 3;
+            this.patternTimer = 0;
+        }
+
+        if (this.shootCounter >= this.shootRate) {
+            this.shoot();
+            this.shootCounter = 0;
+        }
+    }
+
+    shoot() {
+        if (this.pattern === 0) {
+            // Spread pattern
+            for (let i = 0; i < 5; i++) {
+                let angle = (i / 5) * Math.PI - Math.PI / 2;
+                let speed = 4;
+                bullets.push(new Bullet(this.x, this.y, Math.cos(angle) * speed, Math.sin(angle) * speed, 1));
+            }
+        } else if (this.pattern === 1) {
+            // Rain pattern
+            for (let i = 0; i < 3; i++) {
+                bullets.push(new Bullet(this.x - 20 + i * 20, this.y, 0, 4, 1));
+            }
+        } else {
+            // Aimed burst
+            for (let i = 0; i < 3; i++) {
+                let angle = Math.atan2(player.y - this.y, player.x - this.x) + (Math.random() - 0.5) * 0.6;
+                let speed = 4.5;
+                bullets.push(new Bullet(this.x, this.y, Math.cos(angle) * speed, Math.sin(angle) * speed, 1));
+            }
+        }
+    }
+
+    draw() {
+        ctx.fillStyle = '#FFD60A';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = '#FFC300';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Health bar
+        ctx.fillStyle = '#00FF00';
+        ctx.fillRect(this.x - 50, this.y - 35, 100 * (this.health / this.maxHealth), 5);
+        ctx.strokeStyle = '#00AA00';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(this.x - 50, this.y - 35, 100, 5);
+
+        // Boss label
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 12px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('BOSS', this.x, this.y - 45);
+    }
+
+    takeDamage(damage) {
+        this.health -= damage;
+        if (this.health <= 0) {
+            createExplosion(this.x, this.y, 40);
+            createBossDeathExplosion();
+            return true;
+        }
+        return false;
+    }
+}
+
+function createExplosion(x, y, size) {
+    for (let i = 0; i < size; i++) {
+        let angle = Math.random() * Math.PI * 2;
+        let speed = Math.random() * 4 + 2;
+        particles.push({
+            x: x,
+            y: y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            life: 30 + Math.random() * 20,
+            maxLife: 30 + Math.random() * 20,
+            size: Math.random() * 3 + 1,
+            color: '#FF' + Math.floor(Math.random() * 256).toString(16).padStart(2, '0') + Math.floor(Math.random() * 256).toString(16).padStart(2, '0')
+        });
+    }
+}
+
+function createBossDeathExplosion() {
+    for (let i = 0; i < 60; i++) {
+        let angle = Math.random() * Math.PI * 2;
+        let speed = Math.random() * 6 + 3;
+        particles.push({
+            x: player.x + 100,
+            y: 80,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            life: 40 + Math.random() * 30,
+            maxLife: 40 + Math.random() * 30,
+            size: Math.random() * 4 + 2,
+            color: '#FFD60A'
+        });
+    }
+}
+
+function spawnWave() {
+    let difficulty = getDifficulty();
+    let enemyCount = Math.floor(3 + wave * 1.5 + difficulty * 2);
+
+    if (waveProgress < enemyCount) {
+        enemySpawnRate = Math.max(10, 60 - difficulty * 15);
+
+        if (enemySpawnCounter >= enemySpawnRate) {
+            let type = Math.random();
+            let x = Math.random() * (canvas.width - 40) + 20;
+
+            if (waveProgress % 8 === 0 && wave >= 3 && Math.random() < difficulty * 0.1) {
+                enemies.push(new SpiralEnemy(x, -30));
+            } else {
+                enemies.push(new BasicEnemy(x, -30));
+            }
+
+            waveProgress++;
+            enemySpawnCounter = 0;
+        } else {
+            enemySpawnCounter++;
+        }
+    }
+
+    // Spawn boss every 5 waves
+    if (waveProgress >= enemyCount && wave % 5 === 0 && enemies.length === 0) {
+        enemies.push(new BossEnemy(canvas.width / 2, 80));
+    }
 }
 
 function update() {
