@@ -274,11 +274,11 @@ function draw() {
         ctx.fillRect(e.x, e.y, e.width, e.height);
     }
 
-    // Draw traps (invisible)
-    // ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
-    // for (let t of traps) {
-    //     ctx.fillRect(t.x, t.y, t.width, t.height);
-    // }
+    // Draw traps
+    ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
+    for (let t of traps) {
+        ctx.fillRect(t.x, t.y, t.width, t.height);
+    }
 
     // Draw collectibles
     ctx.fillStyle = 'yellow';
